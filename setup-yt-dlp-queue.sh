@@ -30,7 +30,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CRON_SCHEDULE="0 */6 * * *"
 
 # Source config
 if [[ -f "$SCRIPT_DIR/yt-dlp-queue.conf" ]]; then
@@ -42,6 +41,7 @@ fi
 QUEUE_FILE="${QUEUE_FILE:-$PROJECT_DIR/downloads.queue}"
 SUBSCRIPTIONS_FILE="${SUBSCRIPTIONS_FILE:-$PROJECT_DIR/subscriptions.txt}"
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-$HOME/Videos}"
+CRON_SCHEDULE="${CRON_SCHEDULE:-0 */6 * * *}"
 
 echo "╔══════════════════════════════════════════════╗"
 echo "║     yt-dlp Auto-Download Queue — Setup       ║"
@@ -143,7 +143,7 @@ if echo "$CURRENT_CRONTAB" | grep -qF "yt-dlp-queue.sh"; then
 fi
 
 (echo "$CURRENT_CRONTAB"; echo "$CRON_CMD $CRON_MARKER") | crontab -
-echo "  ✓ Cron job set: runs every 6 hours"
+echo "  ✓ Cron job set: schedule $CRON_SCHEDULE"
 
 # ──────────────────────────── Step 5: Shell functions ──────────────────
 

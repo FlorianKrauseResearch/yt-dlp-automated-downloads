@@ -32,6 +32,7 @@ DOWNLOAD_DIR="${DOWNLOAD_DIR:-$HOME/Videos}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-$PROJECT_DIR/data/.yt-dlp-archive}"
 LOG_FILE="${LOG_FILE:-$PROJECT_DIR/data/yt-dlp-queue.log}"
 COOKIE_BROWSER="${COOKIE_BROWSER:-firefox}"
+MAX_LOG_SIZE="${MAX_LOG_SIZE:-1048576}"
 
 LOCK_FILE="/tmp/yt-dlp-queue.lock"
 JSON2NFO_SCRIPT="$SCRIPT_DIR/yt-dlp-json2nfo.py"
@@ -51,9 +52,6 @@ COOKIE_ERROR_PATTERNS=(
     "This video is available to this channel"
     "HTTP Error 403"
 )
-
-# Maximum log size before rotation (1 MB)
-MAX_LOG_SIZE=1048576
 
 # ──────────────────────────── Functions ─────────────────────────────────
 
