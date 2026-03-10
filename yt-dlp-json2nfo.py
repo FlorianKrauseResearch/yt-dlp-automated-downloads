@@ -138,16 +138,39 @@ def process_directory(directory):
     return count
 
 
+def find_video_folder(video_dir, title):
+    """
+    Find the video folder for a given title.
+
+    Checks both flat layout and channel-subfolder layout:
+        video_dir/<title>/
+        video_dir/<channel>/<title>/
+    """
+    # Direct match (queue downloads)
+    direct = os.path.join(video_dir, title)
+    if os.path.isdir(direct):
+        return direct
+
+    # Channel subfolder match (subscription downloads)
+    try:
+        for entry in os.listdir(video_dir):
+            candidate = os.path.join(video_dir, entry, title)
+            if os.path.isdir(candidate):
+                return candidate
+    except OSError:
+        pass
+
+    return None
+
+
 def process_metadata_to_video_dirs(metadata_dir, video_dir):
     """
     Read .info.json files from metadata_dir.
     Write .nfo files into matching per-video folders in video_dir.
 
-    Expects:
-        metadata_dir/<title>.info.json
-        video_dir/<title>/<title>.mp4
-    Produces:
+    Supports both flat and channel-subfolder layouts:
         video_dir/<title>/<title>.nfo
+        video_dir/<channel>/<title>/<title>.nfo
     """
     count = 0
     for filename in os.listdir(metadata_dir):
@@ -158,10 +181,10 @@ def process_metadata_to_video_dirs(metadata_dir, video_dir):
 
         # Derive the video title (base name without .info.json)
         title = filename[: -len(".info.json")]
-        video_folder = os.path.join(video_dir, title)
 
-        # Only generate NFO if the video folder exists
-        if not os.path.isdir(video_folder):
+        # Find the video folder (flat or inside a channel subfolder)
+        video_folder = find_video_folder(video_dir, title)
+        if video_folder is None:
             continue
 
         nfo_path = os.path.join(video_folder, title + ".nfo")

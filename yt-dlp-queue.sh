@@ -82,6 +82,15 @@ needs_cookies() {
 
 download_url() {
     local url="$1"
+    local mode="${2:-queue}"  # "queue" or "subscription"
+
+    # Output template: subscriptions go into channel-specific folders
+    local output_template
+    if [[ "$mode" == "subscription" ]]; then
+        output_template="$DOWNLOAD_DIR/%(channel)s/%(title)s/%(title)s.%(ext)s"
+    else
+        output_template="$DOWNLOAD_DIR/%(title)s/%(title)s.%(ext)s"
+    fi
 
     # Common yt-dlp arguments
     local common_args=(
@@ -90,7 +99,7 @@ download_url() {
         --merge-output-format mp4
         --write-info-json
         --write-description
-        -o "$DOWNLOAD_DIR/%(title)s/%(title)s.%(ext)s"
+        -o "$output_template"
         -o "infojson:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
         -o "description:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
         --no-overwrites
@@ -226,7 +235,7 @@ if [[ "$HAS_SUBS" == "true" ]]; then
     log "Found ${#SUBS[@]} subscription(s)"
 
     for url in "${SUBS[@]}"; do
-        if download_url "$url"; then
+        if download_url "$url" "subscription"; then
             SUB_COUNT=$((SUB_COUNT + 1))
         else
             log "  ⚠ Subscription error (will retry next run): $url"
