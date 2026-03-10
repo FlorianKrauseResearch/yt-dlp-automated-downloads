@@ -84,29 +84,40 @@ download_url() {
     local url="$1"
     local mode="${2:-queue}"  # "queue" or "subscription"
 
-    # Output template: subscriptions go into channel-specific folders
+    # Output template: subscriptions go flat into channel folders,
+    # queue downloads get a per-video subfolder
     local output_template
-    if [[ "$mode" == "subscription" ]]; then
-        output_template="$DOWNLOAD_DIR/%(channel)s/%(title)s/%(title)s.%(ext)s"
-    else
-        output_template="$DOWNLOAD_DIR/%(title)s/%(title)s.%(ext)s"
-    fi
-
-    # Common yt-dlp arguments
     local common_args=(
         --download-archive "$ARCHIVE_FILE"
         -f 'bestvideo+bestaudio/best'
         --merge-output-format mp4
         --write-info-json
         --write-description
-        -o "$output_template"
-        -o "infojson:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
-        -o "description:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
-        -o "pl_infojson:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
-        -o "pl_description:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
         --no-overwrites
         --trim-filenames 200
     )
+
+    if [[ "$mode" == "subscription" ]]; then
+        # Flat layout: channel folder contains video + all metadata side by side
+        output_template="$DOWNLOAD_DIR/%(channel)s/%(title)s.%(ext)s"
+        common_args+=(
+            -o "$output_template"
+            -o "infojson:$DOWNLOAD_DIR/%(channel)s/%(title)s.%(ext)s"
+            -o "description:$DOWNLOAD_DIR/%(channel)s/%(title)s.%(ext)s"
+            -o "pl_infojson:$DOWNLOAD_DIR/%(channel)s/%(playlist_title)s.%(ext)s"
+            -o "pl_description:$DOWNLOAD_DIR/%(channel)s/%(playlist_title)s.%(ext)s"
+        )
+    else
+        # Queue downloads: per-video subfolder, metadata in shared metadata/
+        output_template="$DOWNLOAD_DIR/%(title)s/%(title)s.%(ext)s"
+        common_args+=(
+            -o "$output_template"
+            -o "infojson:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
+            -o "description:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
+            -o "pl_infojson:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
+            -o "pl_description:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
+        )
+    fi
 
     # First attempt: without cookies
     log "  Downloading: $url"
@@ -250,9 +261,15 @@ log "Results: queue $SUCCESS_COUNT ok / $FAIL_COUNT failed, subscriptions $SUB_C
 # ──────────────────────────── Generate NFO files ───────────────────────
 
 if [[ -f "$JSON2NFO_SCRIPT" ]]; then
-    log "Generating .nfo files from .info.json metadata..."
+    log "Generating .nfo files..."
+
+    # Queue downloads: metadata in metadata/, NFO written into per-video folders
     python3 "$JSON2NFO_SCRIPT" --metadata-dir "$DOWNLOAD_DIR/metadata" --video-dir "$DOWNLOAD_DIR" >> "$LOG_FILE" 2>&1 || \
-        log "WARNING: NFO generation had errors"
+        log "WARNING: NFO generation (queue) had errors"
+
+    # Subscription downloads: metadata co-located with videos in channel folders
+    python3 "$JSON2NFO_SCRIPT" --scan "$DOWNLOAD_DIR" >> "$LOG_FILE" 2>&1 || \
+        log "WARNING: NFO generation (scan) had errors"
 else
     log "WARNING: NFO generator not found at $JSON2NFO_SCRIPT — skipping"
 fi

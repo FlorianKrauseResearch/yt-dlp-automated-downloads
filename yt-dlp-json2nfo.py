@@ -5,6 +5,7 @@ Convert yt-dlp .info.json files to Jellyfin-compatible Kodi-style .nfo files.
 Usage:
     yt-dlp-json2nfo.py <info.json>                                Convert a single file (NFO next to it)
     yt-dlp-json2nfo.py --dir <directory>                          Convert all in directory (NFO next to each)
+    yt-dlp-json2nfo.py --scan <directory>                         Recursively find .info.json and write NFO next to each
     yt-dlp-json2nfo.py --metadata-dir <meta> --video-dir <vids>   Read from meta/, write NFO into video folders
 """
 
@@ -143,6 +144,47 @@ def process_directory(directory):
     return count
 
 
+def scan_directory(directory):
+    """
+    Recursively walk a directory tree, find .info.json files, and write
+    .nfo files next to each one. Skips playlist-level metadata and files
+    that already have a corresponding .nfo.
+    """
+    count = 0
+    for dirpath, _dirnames, filenames in os.walk(directory):
+        for filename in filenames:
+            if not filename.endswith(".info.json"):
+                continue
+
+            json_path = os.path.join(dirpath, filename)
+            base = json_path[: -len(".info.json")]
+            nfo_path = base + ".nfo"
+
+            # Skip if NFO already exists
+            if os.path.exists(nfo_path):
+                continue
+
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+            except Exception as e:
+                print(f"Error reading {json_path}: {e}", file=sys.stderr)
+                continue
+
+            # Skip playlist-level metadata
+            if is_playlist_metadata(info):
+                continue
+
+            try:
+                write_nfo(nfo_path, info)
+                print(f"Created: {nfo_path}")
+                count += 1
+            except Exception as e:
+                print(f"Error processing {json_path}: {e}", file=sys.stderr)
+
+    return count
+
+
 def find_video_folder(video_dir, title):
     """
     Find the video folder for a given title.
@@ -235,6 +277,13 @@ def main():
         video_dir = sys.argv[4]
         count = process_metadata_to_video_dirs(metadata_dir, video_dir)
         print(f"Generated {count} new .nfo file(s)")
+    elif sys.argv[1] == "--scan":
+        if len(sys.argv) < 3:
+            print("Usage: yt-dlp-json2nfo.py --scan <directory>")
+            sys.exit(1)
+        directory = sys.argv[2]
+        count = scan_directory(directory)
+        print(f"Generated {count} new .nfo file(s) (scan)")
     elif sys.argv[1] == "--dir":
         if len(sys.argv) < 3:
             print("Usage: yt-dlp-json2nfo.py --dir <directory>")
