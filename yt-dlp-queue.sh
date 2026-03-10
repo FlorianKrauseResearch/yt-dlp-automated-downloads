@@ -102,6 +102,8 @@ download_url() {
         -o "$output_template"
         -o "infojson:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
         -o "description:$DOWNLOAD_DIR/metadata/%(title)s.%(ext)s"
+        -o "pl_infojson:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
+        -o "pl_description:$DOWNLOAD_DIR/metadata/%(playlist_title)s.%(ext)s"
         --no-overwrites
         --trim-filenames 200
     )

@@ -27,6 +27,11 @@ def parse_upload_date(date_str):
         return ""
 
 
+def is_playlist_metadata(info):
+    """Check if an .info.json file is playlist-level metadata (not a video)."""
+    return info.get("_type") == "playlist"
+
+
 def build_nfo_xml(info):
     """Build NFO XML content from yt-dlp info dict."""
     movie = ET.Element("movie")
@@ -171,6 +176,8 @@ def process_metadata_to_video_dirs(metadata_dir, video_dir):
     Supports both flat and channel-subfolder layouts:
         video_dir/<title>/<title>.nfo
         video_dir/<channel>/<title>/<title>.nfo
+
+    Skips playlist-level metadata files (they don't correspond to videos).
     """
     count = 0
     for filename in os.listdir(metadata_dir):
@@ -181,6 +188,18 @@ def process_metadata_to_video_dirs(metadata_dir, video_dir):
 
         # Derive the video title (base name without .info.json)
         title = filename[: -len(".info.json")]
+
+        # Load the JSON to check if it's playlist metadata
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                info = json.load(f)
+        except Exception as e:
+            print(f"Error reading {json_path}: {e}", file=sys.stderr)
+            continue
+
+        # Skip playlist-level metadata (no corresponding video folder)
+        if is_playlist_metadata(info):
+            continue
 
         # Find the video folder (flat or inside a channel subfolder)
         video_folder = find_video_folder(video_dir, title)
@@ -194,8 +213,6 @@ def process_metadata_to_video_dirs(metadata_dir, video_dir):
             continue
 
         try:
-            with open(json_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
             write_nfo(nfo_path, info)
             print(f"Created: {nfo_path}")
             count += 1
